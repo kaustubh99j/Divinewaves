@@ -51,12 +51,30 @@ app.get('/api/stations', async (req, res) => {
 // 3. PROXY ROUTE
 app.get('/proxy-stream', async (req, res) => {
   const streamUrl = req.query.url;
+  
+  // 1. Check if URL exists
+  if (!streamUrl) return res.status(400).send("No URL provided");
+
   try {
-    const response = await axios({ method: 'get', url: streamUrl, responseType: 'stream' });
+    const response = await axios({
+      method: 'get',
+      url: streamUrl,
+      responseType: 'stream',
+      headers: {
+        // This makes the radio station think a real Chrome browser is asking
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Icy-MetaData': '1' // Requests song titles from some Indian stations
+      }
+    });
+
+    // 2. Force the browser to treat it as an audio stream
     res.setHeader('Content-Type', 'audio/mpeg');
     response.data.pipe(res);
+
   } catch (err) {
-    res.status(500).send("Stream offline");
+    console.error("❌ Proxy failed for:", streamUrl, err.message);
+    res.status(500).send("Stream Error");
   }
 });
 
